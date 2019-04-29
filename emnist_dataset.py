@@ -4,79 +4,53 @@ import random
 import array
 #import matplotlib.pyplot as plt    #for debugging
 
+def prepare_samples(samples, label_min, label_max):
+    # get images and labels
+    images, labels = samples
 
-# get train_images and labels
+    index_uppercase = np.where((labels >= label_min) & (labels <= label_max))  # filter out needed uppercase letters
+    labels = np.squeeze(np.take(labels, index_uppercase))
+    images = np.squeeze(images[index_uppercase[:], :, :])
+    labels = labels - label_min  # now indices are from 0 to 25
 
-images_train, labels_train = extract_training_samples('byclass')
+    label_values = np.bincount(labels)  # count occurences of all labels
+    #smallest_label = np.argmin(label_values)  # index of least occurent label
+    smallest_label_count = np.amin(label_values)  # count of least occurent label
 
-index_uppercase = np.where((labels_train >= 10) & (labels_train <= 35))  # filter out needed uppercase letters
-labels_train = np.squeeze(np.take(labels_train, index_uppercase))
-images_train = np.squeeze(images_train[index_uppercase[:], :, :])
-labels_train = labels_train - 10  # now indices are from 0 to 25
+    # pick smallest_label_value amount
+    index = array.array('i')  # integer array init
+    for x in range(label_max-(label_min-1)):
+        ind = np.squeeze(np.where(labels == x))
+        random.shuffle(ind)#to not take the first letters
+        ind = ind[:smallest_label_count]
+        index = np.append(index, ind)
 
-label_values = np.bincount(labels_train)  # count occurences of all labels
-#smallest_label = np.argmin(label_values)  # index of least occurent label
-smallest_label_count = np.amin(label_values)  # count of least occurent label
+    random.shuffle(index)
+    labels = np.take(labels, index)
+    images = np.squeeze(images[index, :, :])
 
-# pick smallest_label_value amount
-train_index = array.array('i')  # integer array init
-for x in range(0, 26):
-    ind = np.squeeze(np.where(labels_train == x))
-    random.shuffle(ind)#to not take the first letters
-    ind = ind[:smallest_label_count]
-    train_index = np.append(train_index, ind)
-
-random.shuffle(train_index)
-train_label = np.take(labels_train, train_index)
-bilder_train = np.squeeze(images_train[train_index, :, :])
+    return images, labels
 
 
-
-# get test_images and labels (test data is roughly 1/6 of train data,
-# checked by comparing smallest_label_value and smallest_label_value_test)
-
-images_test, labels_test = extract_test_samples('byclass')
-
-index_uppercase = np.where((labels_test >= 10) & (labels_test <= 35))  # filter out needed uppercase letters
-labels_test = np.squeeze(np.take(labels_test, index_uppercase))
-images_test = np.squeeze(images_test[index_uppercase[:], :, :])
-labels_test = labels_test - 10  # now indices are from 0 to 25
-
-label_values = np.bincount(labels_test)  # count occurences of all labels
-#smallest_label = np.argmin(label_values)  # index of least occurent label
-smallest_label_count_test = np.amin(label_values)  # count of least occurent label
-
-# pick smallest_label_value amount
-test_index = array.array('i')  # integer array init
-for x in range(0, 26):
-    ind = np.squeeze(np.where(labels_test == x))
-    random.shuffle(ind)#to not take the first letters
-    ind = ind[:smallest_label_count_test]
-    test_index = np.append(test_index, ind)
-
-random.shuffle(test_index)
-test_label = np.take(labels_test, test_index)
-bilder_test = np.squeeze(images_test[test_index, :, :])
-
-#debbuging
-#plt.imshow(bilder_test[0, :, :], cmap="gray")
-#plt.show()
+train_samples = prepare_samples(extract_training_samples('byclass'), 10, 35)
+test_samples = prepare_samples(extract_test_samples('byclass'), 10, 35)
 
 class structured_array():
-    def __init__(self, name, picture_data,labels):
+    def __init__(self, name, sample_data):
         self.name = name
-        self.pictures = picture_data
-        self.labels = labels
+        self.images, self.labels = sample_data
 
 # emnist_dataset is final dataset
 emnist_dataset = []
-# for training: emnist_dataset[0].name,emnist_dataset[0].pictures,emnist_dataset[0].labels
-emnist_dataset.append(structured_array("Training", bilder_train,train_label))
-# for testing: emnist_dataset[1].name,emnist_dataset[1].pictures,emnist_dataset[1].labels
-emnist_dataset.append(structured_array("Testing", bilder_test,test_label))
+# for training: emnist_dataset[0].name,emnist_dataset[0].images,emnist_dataset[0].labels
+emnist_dataset.append(structured_array("Training", train_samples))
+# for testing: emnist_dataset[1].name,emnist_dataset[1].images,emnist_dataset[1].labels
+emnist_dataset.append(structured_array("Testing", test_samples))
 
+# debbuging
+#plt.imshow(emnist_dataset[0].images[6, :, :], cmap="gray")
+#plt.show()
 
 # save or load data
-np.save('emnist_dataset.npy', emnist_dataset)
+#np.save('emnist_dataset.npy', emnist_dataset)
 #emnist_dataset = np.load('emnist_dataset.npy',allow_pickle=True)
-
